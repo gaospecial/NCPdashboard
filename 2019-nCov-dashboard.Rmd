@@ -1,0 +1,335 @@
+---
+title: "Novel Coronavirus Pneumonia (NCP-2019) Dashboard"
+output:
+  flexdashboard::flex_dashboard
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+if (!rvcheck::check_github("guangchuangyu/nCov2019")$up_to_date){
+  devtools::install_github("guangchuangyu/nCov2019")
+}
+
+
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(flexdashboard)
+library(leaflet)
+library(nCov2019)
+library(ggplot2)
+library(plotly)
+library(sf)
+library(RColorBrewer)
+
+x <- get_nCov2019()
+
+x2 <- load_nCov2019()
+
+# x_en <- get_nCov2019(lang = "en")
+```
+
+
+```{r include=FALSE}
+
+province <- readRDS("china_province.RDS")
+city <- readRDS("china_city.RDS")
+  
+```
+
+```{r}
+color_name <- c("confirm","suspect","dead","heal")
+colors <- c("firebrick","violet","#333333","green")
+names(colors) <- color_name
+
+# scale_fill_gredient
+fill_col <- brewer.pal(name = "YlOrRd",n=3)
+```
+
+```{r}
+plot.ly <- function(g,...){
+  ggplotly(g, tooltip = "all",...) %>% 
+    config(displaylogo = FALSE,
+           modeBarButtonsToRemove = c(
+             'sendDataToCloud',
+             # 'pan2d', 
+             'select2d', 
+             'lasso2d',
+             'toggleSpikelines',
+             'hoverClosestCartesian',
+             'hoverCompareCartesian'
+           ))
+}
+
+plot.gg <-  function(df, mapping=aes_string(x="date",y="value",color="name"),...){
+  ggplot(df,mapping = mapping) +
+    geom_line(size=1) +
+    geom_point(size=2) +
+    labs(x="时间",y="") +
+    scale_color_manual(values = colors) +
+    theme_light() +
+    theme(legend.position = "none")
+}
+```
+
+
+
+# 全国疫情状况 {data-orientation=rows}
+
+
+全国实时数据更新时间：`r time(x)`。每日历史数据更新时间：`r time(x2)`。
+
+
+## 总人数
+
+
+### 全国确诊 {.bold}
+
+```{r}
+valueBox(x$chinaTotal$confirm,color = colors[["confirm"]],icon="fa-ambulance")
+```
+
+### 疑似病例
+
+```{r}
+valueBox(x$chinaTotal$suspect,color = colors[["suspect"]],icon = "fa-medkit")
+```
+
+
+### 治愈人数
+
+```{r}
+valueBox(x$chinaTotal$heal,color = colors[["heal"]],icon = "fa-capsules")
+```
+
+### 死亡人数
+
+```{r}
+valueBox(x$chinaTotal$dead,color = colors[["dead"]],icon="fa-heartbeat")
+```
+
+## 新增人数
+
+### 较昨日上升
+
+```{r}
+valueBox(x$chinaAdd$confirm,color = colors[["confirm"]],icon="fa-angle-double-up")
+```
+
+### 较昨日上升
+
+```{r}
+valueBox(x$chinaAdd$suspect,color = colors["suspect"],icon="fa-angle-double-up")
+```
+
+
+### 较昨日上升
+
+```{r}
+valueBox(x$chinaAdd$heal,color = colors[["heal"]],icon="fa-angle-double-up")
+```
+
+### 较昨日上升
+
+```{r}
+valueBox(x$chinaAdd$dead,color = colors[["dead"]],icon="fa-angle-double-up")
+```
+
+
+## 全国数据 {data-height=800}
+
+### 全国总量数据
+
+```{r}
+df <- summary(x) %>% 
+  mutate(date=as.Date(date,format="%m.%d")) %>%
+  select(date,confirm,suspect,heal,dead) %>%
+  pivot_longer(cols = -date)
+  
+plot.ly(plot.gg(df))
+```
+
+
+
+### 全国每日增量数据
+
+
+```{r}
+
+df <- summary(x,by="today") %>% 
+  mutate(date=as.Date(date,format="%m.%d")) %>%
+  select(date,confirm,suspect,heal,dead) %>%
+  pivot_longer(cols = -date)
+
+plot.ly(plot.gg(df))
+
+
+```
+
+
+## 湖北省数据  {data-height=800}
+
+
+
+### 湖北省增长速度
+
+```{r}
+df <- summary(x2,province="湖北") %>% 
+  mutate(date=as.Date(time,format="%m.%d")) %>%
+  select(date,cum_confirm,cum_dead,cum_heal) %>%
+  rename("confirm"=cum_confirm,
+         "dead"=cum_dead,
+         "heal"=cum_heal) %>%
+  mutate_at(c("confirm","dead","heal"),as.numeric) %>%
+  pivot_longer(cols = -date)
+  
+plot.ly(plot.gg(df))
+
+```
+
+
+
+### 湖北省每日增量
+
+
+```{r}
+df <- summary(x2,by="today",province="湖北") %>% 
+  mutate(date=as.Date(time,format="%m.%d")) %>%
+  select(date,confirm,dead,heal) %>%
+  mutate_at(c("confirm","dead","heal"),as.numeric) %>%
+  pivot_longer(cols = -date)
+
+plot.ly(plot.gg(df))
+
+
+```
+
+# 疫情地图 {data-orientation=columns}
+
+
+## Column {data-width=250}
+
+### 选择省份查看分省地图
+
+```{r}
+inputPanel(
+  selectInput("provinceShortName", label = "省份",
+              choices = c("全国",as.character(x[]$name) ), selected = "全国"),
+  radioButtons("type",label = "选择病例类型",
+              choices = list("确诊"="confirm",
+                             # "疑似"="suspect",  # 数据不全
+                             "死亡"="dead",
+                             "治愈"="heal"
+                             # ,"死亡率(%)"="deadRate",
+                             # "治愈率(%)"="healRate"
+                             )),
+  checkboxInput("view_history","选中则查看历史数据",value = FALSE),
+  sliderInput("time", "查看历史数据动态：",
+                min = min(x2[]$time), max = max(x2[]$time),
+                value = as.Date(time(x)), step = 1,
+                ticks = 1, timeFormat = "%m-%d",
+                # animate =
+                #   animationOptions(interval = 2000, loop = TRUE)
+              )
+  )
+```
+
+
+
+
+## Column  {data-width=800}
+
+### 中国地图
+
+```{r}
+
+renderPlotly({
+  
+  if (input$view_history) {  # history data
+    if (input$provinceShortName == "全国"){
+      dataset <- x2[][,1:6] %>% 
+        filter(province==city) %>%
+        mutate(name=province) %>%
+        filter(time==input$time) %>%
+        mutate(confirm=cum_confirm,
+               dead = cum_dead,
+               heal = cum_heal)
+      sf_data <- province %>% left_join(dataset)
+    } else {
+      dataset <- x2[input$provinceShortName] %>% 
+        mutate(name=city) %>%
+        filter(time==input$time) %>%
+        mutate(confirm=cum_confirm,
+               dead = cum_dead,
+               heal = cum_heal)
+      
+      # 补全数据
+      # data_type <- colnames(dataset)[-1] # 第一个是 name
+      # fill_list <- vector("list",length = length(data_type))
+      # names(fill_list) <- data_type
+      # fill_list <- lapply(fill_list, function(x)return(0)) 
+      
+      sf_data <- subset(city, provinceShortName==input$provinceShortName) %>% 
+        left_join(dataset) 
+    }
+    
+  } else {    # recent data
+    if (input$provinceShortName == "全国"){
+      dataset <- x[]
+      sf_data <- province %>% left_join(dataset)
+    } else {
+      dataset <- x[input$provinceShortName]
+      
+      # 补全数据
+      data_type <- colnames(dataset)[-1] # 第一个是 name
+      fill_list <- vector("list",length = length(data_type))
+      names(fill_list) <- data_type
+      fill_list <- lapply(fill_list, function(x)return(0)) 
+      
+      sf_data <- subset(city, provinceShortName==input$provinceShortName) %>% 
+        left_join(dataset) %>%
+        complete(fill = fill_list)
+    }
+    
+  }
+  
+  p <-    ggplot(sf_data) +
+    geom_sf(aes_string(fill=input$type)) +
+    geom_sf_text(aes_string(label="name",text=input$type)) +
+    scale_fill_gradient2(low = fill_col[[1]],mid = fill_col[[2]],high = fill_col[[3]],
+                         trans = "log10") +
+    theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5,face="bold"),
+        plot.background = element_blank(),
+        panel.background = element_blank(),
+        panel.grid = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank())
+  
+  ggplotly(p, tooltip = c("text")) %>% 
+    config(displaylogo = FALSE,
+           modeBarButtonsToRemove = c(
+             'sendDataToCloud',
+             # 'pan2d', 
+             'select2d', 
+             'lasso2d',
+             'toggleSpikelines',
+             'hoverClosestCartesian',
+             'hoverCompareCartesian'
+           ))
+    
+})
+
+
+```
+
+
+
+
+
+
+
+
