@@ -1,5 +1,6 @@
 ---
 title: "Novel Coronavirus Pneumonia (NCP-2019) Dashboard"
+author: "(@gaospecial)"
 output:
   flexdashboard::flex_dashboard
 runtime: shiny
@@ -8,7 +9,7 @@ runtime: shiny
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 
-if (!rvcheck::check_github("guangchuangyu/nCov2019")$up_to_date){
+if (!require("nCov2019") | !rvcheck::check_github("guangchuangyu/nCov2019")$up_to_date){
   devtools::install_github("guangchuangyu/nCov2019")
 }
 
