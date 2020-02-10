@@ -80,7 +80,9 @@ plot.gg <-  function(df, mapping=aes_string(x="date",y="value",color="name"),...
 # 全国疫情状况 {data-orientation=rows}
 
 
-全国实时数据更新时间：`r time(x)`。每日历史数据更新时间：`r time(x2)`。
+  全国实时数据更新时间：`r time(x)`。每日历史数据更新时间：`r time(x2)`。
+
+  **数据来源**：[腾讯新闻：新型冠状病毒肺炎疫情追踪](https://news.qq.com/zt2020/page/feiyan.htm) 。
 
 
 ## 总人数
@@ -116,26 +118,39 @@ valueBox(x$chinaTotal$dead,color = colors[["dead"]],icon="fa-heartbeat")
 ### 较昨日上升
 
 ```{r}
-valueBox(x$chinaAdd$confirm,color = colors[["confirm"]],icon="fa-angle-double-up")
+increment <- summary(x,by="today") %>% 
+  mutate(date=as.Date(date,format="%m.%d"))
+
+latest_day <- max(increment$date)
+if (latest_day == Sys.Date()-1){
+  increment_today <- as.list(filter(increment,date==latest_day))
+} else {
+  increment_today <- x$chinaAdd
+}
+```
+
+
+```{r}
+valueBox(increment_today$confirm,color = colors[["confirm"]],icon="fa-angle-double-up")
 ```
 
 ### 较昨日上升
 
 ```{r}
-valueBox(x$chinaAdd$suspect,color = colors["suspect"],icon="fa-angle-double-up")
+valueBox(increment_today$suspect,color = colors["suspect"],icon="fa-angle-double-up")
 ```
 
 
 ### 较昨日上升
 
 ```{r}
-valueBox(x$chinaAdd$heal,color = colors[["heal"]],icon="fa-angle-double-up")
+valueBox(increment_today$heal,color = colors[["heal"]],icon="fa-angle-double-up")
 ```
 
 ### 较昨日上升
 
 ```{r}
-valueBox(x$chinaAdd$dead,color = colors[["dead"]],icon="fa-angle-double-up")
+valueBox(increment_today$dead,color = colors[["dead"]],icon="fa-angle-double-up")
 ```
 
 
