@@ -19,6 +19,10 @@ shapes <- lapply(files, function(file){
 
 chinamap <- do.call("rbind",shapes)
 
+chinamap$geometry <- ms_simplify(chinamap$geometry)
+write_sf(chinamap,dsn="chinamap_lite.shp")
+
+
 province_suffix <-  "省|市|自治区|维吾尔自治区|回族自治区|壮族自治区|特别行政区"
 province <- subset(chinamap, Layer=="省") %>%
   mutate(name = str_remove_all(Name, pattern = province_suffix))
