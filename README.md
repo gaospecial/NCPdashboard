@@ -11,6 +11,6 @@ Novel Coronavirus Pneumonia (NCP-2019) Dashboard
 
 # 访问地址
 
-http://ncp.bio-spring.info
+http://bio-spring.info:2019/nCov-dashboard.Rmd
 
 （感谢 [@徐洲更](https://github.com/xuzhougeng) 提供的 Shiny 服务器）
