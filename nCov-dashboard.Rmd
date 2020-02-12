@@ -9,9 +9,9 @@ runtime: shiny
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 
-if (!require("nCov2019") | !rvcheck::check_github("guangchuangyu/nCov2019")$up_to_date){
-  devtools::install_github("guangchuangyu/nCov2019")
-}
+# if (!require("nCov2019") | !rvcheck::check_github("guangchuangyu/nCov2019")$up_to_date){
+#   devtools::install_github("guangchuangyu/nCov2019")
+# }
 
 
 library(tidyr)
