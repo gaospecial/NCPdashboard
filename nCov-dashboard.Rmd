@@ -77,7 +77,7 @@ plot.gg <-  function(df, mapping=aes_string(x="date",y="value",color="name"),...
 
 
 
-# 全国疫情状况 {data-orientation=rows}
+# 全国疫情状况 {data-orientation=rows} 
 
 
   全国实时数据更新时间：`r time(x)`。每日历史数据更新时间：`r time(x2)`。
@@ -192,13 +192,9 @@ plot.ly(plot.gg(df))
 ### 湖北省增长速度
 
 ```{r}
-df <- summary(x2,province="湖北") %>% 
-  mutate(date=as.Date(time,format="%m.%d")) %>%
-  select(date,cum_confirm,cum_dead,cum_heal) %>%
-  rename("confirm"=cum_confirm,
-         "dead"=cum_dead,
-         "heal"=cum_heal) %>%
-  mutate_at(c("confirm","dead","heal"),as.numeric) %>%
+df <- summary(x,province="湖北") %>% 
+  mutate(date=as.Date(date,format="%m.%d")) %>%
+  select(date,confirm,suspect,dead,heal) %>%
   pivot_longer(cols = -date)
   
 plot.ly(plot.gg(df))
@@ -211,10 +207,11 @@ plot.ly(plot.gg(df))
 
 
 ```{r}
-df <- summary(x2,by="today",province="湖北") %>% 
-  mutate(date=as.Date(time,format="%m.%d")) %>%
-  select(date,confirm,dead,heal) %>%
-  mutate_at(c("confirm","dead","heal"),as.numeric) %>%
+df <- summary(x,province="湖北") %>% 
+  mutate(date=as.Date(date,format="%m.%d")) %>%
+  select(date,confirm,suspect,dead,heal) %>%
+  arrange(date) %>%
+  mutate_at(c("confirm","suspect","dead","heal"), function(x) c(0,diff(x))) %>%
   pivot_longer(cols = -date)
 
 plot.ly(plot.gg(df))
@@ -240,15 +237,16 @@ inputPanel(
                              "治愈"="heal"
                              # ,"死亡率(%)"="deadRate",
                              # "治愈率(%)"="healRate"
-                             )),
-  checkboxInput("view_history","选中则查看历史数据",value = FALSE),
-  sliderInput("time", "查看历史数据动态：",
-                min = min(x2[]$time), max = max(x2[]$time),
-                value = as.Date(time(x)), step = 1,
-                ticks = 1, timeFormat = "%m-%d",
-                # animate =
-                #   animationOptions(interval = 2000, loop = TRUE)
-              )
+                             ))
+  # ,
+  # checkboxInput("view_history","选中则查看历史数据",value = FALSE),
+  # sliderInput("time", "查看历史数据动态：",
+  #               min = min(x2[]$time), max = max(x2[]$time),
+  #               value = as.Date(time(x)), step = 1,
+  #               ticks = 1, timeFormat = "%m-%d",
+  #               # animate =
+  #               #   animationOptions(interval = 2000, loop = TRUE)
+  #             )
   )
 ```
 
@@ -263,35 +261,36 @@ inputPanel(
 
 renderPlotly({
   
-  if (input$view_history) {  # history data
-    if (input$provinceShortName == "全国"){
-      dataset <- x2[][,1:6] %>% 
-        filter(province==city) %>%
-        mutate(name=province) %>%
-        filter(time==input$time) %>%
-        mutate(confirm=cum_confirm,
-               dead = cum_dead,
-               heal = cum_heal)
-      sf_data <- province %>% left_join(dataset)
-    } else {
-      dataset <- x2[input$provinceShortName] %>% 
-        mutate(name=city) %>%
-        filter(time==input$time) %>%
-        mutate(confirm=cum_confirm,
-               dead = cum_dead,
-               heal = cum_heal)
-      
-      # 补全数据
-      # data_type <- colnames(dataset)[-1] # 第一个是 name
-      # fill_list <- vector("list",length = length(data_type))
-      # names(fill_list) <- data_type
-      # fill_list <- lapply(fill_list, function(x)return(0)) 
-      
-      sf_data <- subset(city, provinceShortName==input$provinceShortName) %>% 
-        left_join(dataset) 
-    }
-    
-  } else {    # recent data
+  # if (input$view_history) {  # history data
+  #   if (input$provinceShortName == "全国"){
+  #     dataset <- x2[][,1:6] %>% 
+  #       filter(province==city) %>%
+  #       mutate(name=province) %>%
+  #       filter(time==input$time) %>%
+  #       mutate(confirm=cum_confirm,
+  #              dead = cum_dead,
+  #              heal = cum_heal)
+  #     sf_data <- province %>% left_join(dataset)
+  #   } else {
+  #     dataset <- x2[input$provinceShortName] %>% 
+  #       mutate(name=city) %>%
+  #       filter(time==input$time) %>%
+  #       mutate(confirm=cum_confirm,
+  #              dead = cum_dead,
+  #              heal = cum_heal)
+  #     
+  #     # 补全数据
+  #     # data_type <- colnames(dataset)[-1] # 第一个是 name
+  #     # fill_list <- vector("list",length = length(data_type))
+  #     # names(fill_list) <- data_type
+  #     # fill_list <- lapply(fill_list, function(x)return(0)) 
+  #     
+  #     sf_data <- subset(city, provinceShortName==input$provinceShortName) %>% 
+  #       left_join(dataset) %>%
+  #       filter(!is.na(confirm))
+  #   }
+  #   
+  # } else {    # recent data
     if (input$provinceShortName == "全国"){
       dataset <- x[]
       sf_data <- province %>% left_join(dataset)
@@ -306,10 +305,11 @@ renderPlotly({
       
       sf_data <- subset(city, provinceShortName==input$provinceShortName) %>% 
         left_join(dataset) %>%
-        complete(fill = fill_list)
+        filter(!is.na(confirm)) %>%
+        complete(fill = fill_list) 
     }
     
-  }
+  # }
   
   p <-    ggplot(sf_data) +
     geom_sf(aes_string(fill=input$type)) +
