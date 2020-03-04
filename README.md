@@ -22,7 +22,7 @@ http://bio-spring.info:2020/nCov-dashboard.Rmd
 如果想要部署到自己的服务器上，可以进行下列操作。
 
 - clone到服务器上面。
-- 安装较新版本的R、所有依赖的包，以及包依赖的库文件。根据我的经历，`library(sf)` 的一些依赖可能会报错，主要原因是缺乏相应的库文件，如 `classInt`，可以参见这里的解决方法：https://r.bio-spring.info/2020/02/10/install-sf-classint/。
+- 安装较新版本的R、所有依赖的包，以及包依赖的库文件。根据我的经历，`library(sf)` 的一些依赖可能会报错，主要原因是缺乏相应的库文件，如 `classInt`，可以参见这里的解决方法：https://r.bio-spring.info/2020/02/10/install-sf-classint/  。
 - 在Linux终端运行命令：
   
   `nohup R -e 'rmarkdown::run("nCov-dashboard.Rmd",shiny_args = list(launch.browser=FALSE,host="111.111.111.111",port=2020))'   > log 2>&1  &`
